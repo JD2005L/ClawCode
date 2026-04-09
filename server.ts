@@ -6,7 +6,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import fs from "fs";
 import path from "path";
-import { loadConfig } from "./lib/config.ts";
+import { loadConfig, saveConfig } from "./lib/config.ts";
 import { DreamEngine } from "./lib/dreaming.ts";
 import { extractKeywords } from "./lib/keywords.ts";
 import { MemoryDB } from "./lib/memory-db.ts";
@@ -437,6 +437,30 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: "agent_config",
+      description:
+        "View or update agent settings (memory backend, QMD, active hours, dreaming). Use action='get' to view current config, action='set' with key and value to change a setting. After changes, remind user to run /mcp reconnect clawcode.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          action: {
+            type: "string",
+            enum: ["get", "set"],
+            description: "'get' to view config, 'set' to update a setting",
+          },
+          key: {
+            type: "string",
+            description: "Setting key to update (e.g., 'memory.backend', 'memory.qmd.searchMode', 'heartbeat.activeHours.start')",
+          },
+          value: {
+            type: "string",
+            description: "New value for the setting",
+          },
+        },
+        required: ["action"],
+      },
+    },
+    {
       name: "agent_status",
       description:
         "Show agent identity, memory index stats, and dream tracking summary.",
@@ -605,6 +629,79 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         isError: true,
       };
     }
+  }
+
+  if (name === "agent_config") {
+    const action = String(params.action || "get");
+
+    if (action === "get") {
+      const current = loadConfig(PLUGIN_ROOT);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `## Current Configuration\n\n\`\`\`json\n${JSON.stringify(current, null, 2)}\n\`\`\`\n\nTo change: \`agent_config(action='set', key='memory.backend', value='qmd')\`\nAfter changes: \`/mcp reconnect clawcode\``,
+          },
+        ],
+      };
+    }
+
+    if (action === "set") {
+      const key = String(params.key || "");
+      const value = String(params.value || "");
+
+      if (!key) {
+        return {
+          content: [{ type: "text", text: "Error: 'key' is required. Example: agent_config(action='set', key='memory.backend', value='qmd')" }],
+          isError: true,
+        };
+      }
+
+      try {
+        const current = loadConfig(PLUGIN_ROOT);
+
+        // Navigate the nested config object by dot-separated key
+        const parts = key.split(".");
+        let target: any = current;
+        for (let i = 0; i < parts.length - 1; i++) {
+          if (target[parts[i]] === undefined) target[parts[i]] = {};
+          target = target[parts[i]];
+        }
+
+        const lastKey = parts[parts.length - 1];
+
+        // Parse value: try JSON first, then boolean, then number, then string
+        let parsedValue: any = value;
+        if (value === "true") parsedValue = true;
+        else if (value === "false") parsedValue = false;
+        else if (/^\d+(\.\d+)?$/.test(value)) parsedValue = Number(value);
+        else {
+          try { parsedValue = JSON.parse(value); } catch { /* keep as string */ }
+        }
+
+        target[lastKey] = parsedValue;
+        saveConfig(PLUGIN_ROOT, current);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Set \`${key}\` = \`${JSON.stringify(parsedValue)}\`\n\nRun \`/mcp reconnect clawcode\` to apply.`,
+            },
+          ],
+        };
+      } catch (err) {
+        return {
+          content: [{ type: "text", text: `Error: ${err instanceof Error ? err.message : String(err)}` }],
+          isError: true,
+        };
+      }
+    }
+
+    return {
+      content: [{ type: "text", text: "Unknown action. Use 'get' or 'set'." }],
+      isError: true,
+    };
   }
 
   if (name === "agent_status") {

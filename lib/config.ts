@@ -9,7 +9,7 @@ import path from "path";
 export interface AgentConfig {
   /** Heartbeat configuration */
   heartbeat?: {
-    /** Cron schedule (default: "*/30 * * * *") */
+    /** Cron schedule (default: every 30 min) */
     schedule?: string;
     /** Active hours — heartbeat only fires within this window */
     activeHours?: {
@@ -23,7 +23,7 @@ export interface AgentConfig {
   };
   /** Dreaming configuration */
   dreaming?: {
-    /** Cron schedule (default: "0 3 * * *") */
+    /** Cron schedule (default: daily at 3 AM) */
     schedule?: string;
     /** Timezone for dreaming cron */
     timezone?: string;
