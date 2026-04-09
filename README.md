@@ -77,7 +77,8 @@ Each agent is a self-contained folder:
 │   └── .dreams/
 │       ├── events.jsonl          # Memory recall log
 │       └── short-term-recall.json # Recall scoring index
-├── templates/           # Templates for new agents
+���── templates/           # Templates for new agents
+├── lib/                 # Memory engine (SQLite, FTS5, dreaming, QMD)
 ├── .claude-plugin/      # Plugin config
 ├── .mcp.json            # MCP server config
 ├── server.ts            # MCP server

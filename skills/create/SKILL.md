@@ -29,6 +29,7 @@ Each agent lives in its own folder. On first run, the agent discovers its identi
    cp -r ${CLAUDE_PLUGIN_ROOT}/hooks ~/<agent-name>/
    cp -r ${CLAUDE_PLUGIN_ROOT}/skills ~/<agent-name>/
    cp -r ${CLAUDE_PLUGIN_ROOT}/templates ~/<agent-name>/
+   cp -r ${CLAUDE_PLUGIN_ROOT}/lib ~/<agent-name>/
    ```
 
 4. **Copy templates** as the agent's initial files:
