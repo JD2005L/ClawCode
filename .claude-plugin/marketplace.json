@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "clawcode",
+  "description": "crisandrews — OpenClaw-compatible agent system for Claude Code",
+  "owner": {
+    "name": "crisandrews"
+  },
+  "plugins": [
+    {
+      "name": "agent",
+      "description": "Personal AI agent with personality, memory, dreaming, and heartbeats — OpenClaw-compatible.",
+      "category": "productivity",
+      "source": "./"
+    }
+  ]
+}

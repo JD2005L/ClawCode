@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "clawcode": {
+      "command": "npm",
+      "args": ["--prefix", "${CLAUDE_PLUGIN_ROOT}", "run", "start"]
+    }
+  }
+}

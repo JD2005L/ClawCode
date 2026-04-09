@@ -1,0 +1,10 @@
+node_modules/
+package-lock.json
+agent-config.json
+.qmd/
+.heartbeat-cron-created
+memory/.memory.sqlite
+memory/.memory.sqlite-wal
+memory/.memory.sqlite-shm
+memory/.dreams/
+DREAMS.md

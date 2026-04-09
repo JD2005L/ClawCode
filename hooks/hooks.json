@@ -1,0 +1,45 @@
+{
+  "description": "Agent lifecycle hooks — bootstrap, personality, memory flush, heartbeat, dreaming, session summary",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AGENT_ROOT=${CLAUDE_PLUGIN_ROOT}; if [ -f \"$AGENT_ROOT/BOOTSTRAP.md\" ]; then echo '[clawcode] BOOTSTRAP.md detected — this is a first run. Start the bootstrap conversation to discover your identity.'; exit 0; fi; IDENTITY=$(cat $AGENT_ROOT/IDENTITY.md 2>/dev/null | head -8 || echo '(no IDENTITY.md)'); echo \"$IDENTITY\"; CRON_MARKER=\"$AGENT_ROOT/.crons-created\"; if [ ! -f \"$CRON_MARKER\" ]; then echo ''; echo '[clawcode] Default crons not set up. Create these now:'; echo '1. Heartbeat: CronCreate schedule=\"*/30 * * * *\" prompt=\"Run /agent:heartbeat\" durable=true'; echo '2. Dreaming: CronCreate schedule=\"0 3 * * *\" prompt=\"Use the dream tool: dream(action=run)\" durable=true'; echo 'After creating both: touch '\"$CRON_MARKER\"'; fi"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[clawcode] Context nearing compaction. Save important information from this conversation to memory/'$(date +%Y-%m-%d)'.md — APPEND only, do not overwrite existing entries. If nothing to save, skip.'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[clawcode] Session ending. If this was a significant conversation, write a brief summary to memory/'$(date +%Y-%m-%d)'.md before closing. Include: what was discussed, decisions made, open items.'"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mkdir -p ${CLAUDE_PLUGIN_ROOT}/memory/.dreams 2>/dev/null; echo '{\"type\":\"session.end\",\"ts\":\"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'\"}' >> ${CLAUDE_PLUGIN_ROOT}/memory/.dreams/events.jsonl 2>/dev/null"
+          }
+        ]
+      }
+    ]
+  }
+}
