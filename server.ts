@@ -196,25 +196,24 @@ function _loadBootstrapFilesInner(): string {
     "For WhatsApp/messaging: use MCP tools from the whatsapp plugin if available (reply, react).\n"
   );
 
-  // -- Memory instructions
-  sections.push("## Memory\n");
-  sections.push("You have memory tools: `memory_search` and `memory_get`.");
-  sections.push(
-    "Before answering about prior work, decisions, dates, people, preferences, or todos:"
-  );
+  // -- Memory instructions (MUST use MCP tools, not native Claude Code tools)
+  sections.push("## Memory — CRITICAL RULES\n");
+  sections.push("You have MCP memory tools. You MUST use them instead of Claude Code's native tools:");
+  sections.push("- To SEARCH memory: use `memory_search` (MCP tool), NOT Read or Grep");
+  sections.push("- To READ memory details: use `memory_get` (MCP tool), NOT Read");
+  sections.push("- To RUN dreaming: use `dream` (MCP tool)");
+  sections.push("- To CHECK status: use `agent_status` (MCP tool)");
+  sections.push("- To CHANGE settings: use `agent_config` (MCP tool)");
+  sections.push("");
+  sections.push("Before answering about prior work, decisions, dates, people, preferences, or todos:");
   sections.push("1. Run memory_search with a relevant query");
   sections.push("2. Use memory_get to pull specific lines if needed");
   sections.push("3. If low confidence after search, say you checked.");
-  sections.push(
-    "Citations: include Source: path#Lstart-Lend when it helps verify."
-  );
+  sections.push("Citations: include Source: path#Lstart-Lend when it helps verify.");
   sections.push("");
-  sections.push(
-    "To persist information, write to memory/YYYY-MM-DD.md (today's date). APPEND only, never overwrite."
-  );
-  sections.push(
-    "For long-term curated memory, update MEMORY.md in the memory/ directory."
-  );
+  sections.push("To SAVE information to memory: write to memory/YYYY-MM-DD.md (today's date) using Write or Edit tool. APPEND only.");
+  sections.push("Do NOT use Claude Code's auto-memory (~/.claude/projects/.../memory/). Use the memory/ directory in this workspace ONLY.");
+  sections.push("For long-term curated memory, update memory/MEMORY.md.");
   sections.push("");
 
   // -- Session summary (mirrors OpenClaw's session-memory hook)
