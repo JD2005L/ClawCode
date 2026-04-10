@@ -21,6 +21,7 @@ The plugin is already installed — this skill just copies the template files to
    cp ${CLAUDE_PLUGIN_ROOT}/templates/AGENTS.md ./
    cp ${CLAUDE_PLUGIN_ROOT}/templates/TOOLS.md ./
    cp ${CLAUDE_PLUGIN_ROOT}/templates/HEARTBEAT.md ./
+   cp ${CLAUDE_PLUGIN_ROOT}/templates/CLAUDE.md ./
    ```
 
 2. **Copy the bootstrap file** (the birth certificate):

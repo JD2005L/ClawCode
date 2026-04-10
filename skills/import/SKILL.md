@@ -35,6 +35,11 @@ Import an existing agent from an OpenClaw installation into this directory.
    
    Files to copy:
    - `SOUL.md`, `IDENTITY.md`, `USER.md`, `AGENTS.md`, `TOOLS.md`, `HEARTBEAT.md`
+   
+   Also copy CLAUDE.md from the plugin templates (NOT from OpenClaw):
+   ```bash
+   cp ${CLAUDE_PLUGIN_ROOT}/templates/CLAUDE.md ./
+   ```
 
 5. **Import memory** (ask user first):
    - Copy `MEMORY.md` to `./memory/MEMORY.md`
