@@ -11,7 +11,7 @@ Show the OpenClaw-style status card with runtime info. Works from CLI and from m
 ## Output format (OpenClaw-compatible)
 
 ```
-🦞 ClawCode <version>
+👽 ClawCode <version>
 🧠 Model: <provider>/<model>
 📚 Context: <tokens>/<limit> (<%>) · 🧹 Compactions: <count>
 🧵 Session: <session-key> • updated <time-ago>
@@ -59,7 +59,7 @@ Use `**bold**`, headers are fine.
 ## Example output (WhatsApp)
 
 ```
-🦞 *ClawCode 1.0.0*
+👽 *ClawCode 1.0.0*
 🧠 *Model:* anthropic/claude-opus-4-6
 📚 *Context:* 4 files · 12 chunks · 🧹 0 compactions
 🧵 *Session:* whatsapp:JC • updated ahora
