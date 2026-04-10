@@ -31,6 +31,73 @@ You have ClawCode MCP tools. You MUST use them instead of native Claude Code too
 - **Do NOT** store daily facts in `USER.md` — that file is for identity context only. Daily facts go in `memory/YYYY-MM-DD.md`.
 - **Long-term memory**: update `memory/MEMORY.md` for curated, evergreen knowledge.
 
+## Recognized commands (text commands — work from ANY surface)
+
+When the user writes a message that **starts with a slash** (including via WhatsApp, Telegram, Discord, etc.), recognize it as a command and respond accordingly. These commands work whether the user is in the CLI REPL or on a messaging channel.
+
+| Command | Action | Output format |
+|---|---|---|
+| `/help` | List available commands | Short list of commands with one-line descriptions |
+| `/commands` | List all commands (alias of /help) | Same as /help |
+| `/status` | Show agent status | Rich card (see format below) |
+| `/usage` | Show usage/resources | Usage card |
+| `/whoami` | Show sender info | "You are: `<senderId>` · Channel: `<channel>`" |
+| `/new` | Start new session | Save session summary to memory, tell user: "Summary saved. Run /clear when ready." |
+| `/compact` | Save context before compaction | Save important info to memory, tell user: "Saved. Run /compact now." |
+| `/who` or `/quien` | Identify yourself | One-line: "Soy <name> <emoji>" |
+| `/context` | Show what's in your context | List of files + MCP servers active |
+| `/memory` | Show memory stats | File count, size, recent daily logs |
+
+**IMPORTANT rules for recognizing commands:**
+1. A message that is EXACTLY a slash command (e.g. `/status`) or STARTS with one (e.g. `/status detail`) must be handled as a command — do NOT treat it as regular conversation
+2. The command works the same whether the user is in CLI or WhatsApp — the response is just text (plus `reply` tool call if on a messaging channel)
+3. On WhatsApp, use `*bold*` formatting (single asterisk), not `**bold**`
+4. On Telegram, use `**bold**` or HTML
+5. On CLI (terminal), use normal markdown
+
+### /status response format
+
+```
+🤖 *<Name>* <emoji>
+Session: <id> · updated <time-ago>
+Memory: <N> files, <M> chunks indexed · <backend>
+Dreams: <X> unique memories recalled
+Crons: heartbeat <schedule>, dreaming <schedule>
+Last heartbeat: <time-ago>
+```
+
+Get real values from the `agent_status` MCP tool and `agent_config` tool. Use `date` via Bash for timestamps.
+
+### /usage response format
+
+```
+📊 *Resource usage*
+Memory: <size> (<N> files)
+Dreams: <events> events, <unique> unique memories
+Index: <chunks> chunks, <db-size>
+Session (native): run /usage for tokens/cost
+```
+
+### /help response format
+
+```
+📋 *Available commands*
+
+/status       — Agent status & memory stats
+/usage        — Resource usage
+/whoami       — Who you are
+/help         — This message
+
+*Memory:*
+/new          — Start new session (saves summary)
+/compact      — Save context before /compact
+
+*Native Claude Code (CLI only):*
+/status /usage /compact /clear /mcp /model /cost
+```
+
+Adjust for the surface: on CLI include native commands, on WhatsApp omit them (they don't work there).
+
 ## Messaging plugins (coexistence)
 
 You may be running alongside messaging plugins like `crisandrews/claude-whatsapp`, telegram, discord, imessage, or slack. Each messaging plugin is an independent MCP server — no conflicts with ClawCode.

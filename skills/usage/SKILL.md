@@ -1,55 +1,69 @@
 ---
 name: usage
-description: Show usage stats — agent memory stats + native Claude Code token usage. Triggers on /agent:usage, "uso del agente", "agent usage", "cuánto llevo gastado".
+description: Show usage — agent memory usage + where to find session token usage. Works from CLI or messaging channels. Triggers on /usage, /agent:usage, "uso del agente", "agent usage".
 user-invocable: true
 ---
 
 # Agent Usage
 
-Show usage and consumption metrics combining agent-specific stats and session-level usage.
+Show resource usage for the agent. Works from CLI or messaging channels.
 
 ## Steps
 
-1. **Call `agent_status` MCP tool** to get memory/dream stats.
+1. **Detect surface** (CLI vs messaging channel).
 
-2. **Check memory file sizes and counts**:
-   ```bash
-   du -sh memory/ 2>/dev/null
-   find memory/ -name "*.md" ! -name ".*" 2>/dev/null | wc -l
-   wc -c memory/MEMORY.md 2>/dev/null
-   ```
+2. **Gather stats**:
+   - Call `agent_status` MCP tool → files, chunks, dream count
+   - Bash: `du -sh memory/ 2>/dev/null | awk '{print $1}'` → memory dir size
+   - Bash: `find memory/ -maxdepth 1 -name "*.md" ! -name ".*" 2>/dev/null | wc -l | tr -d ' '` → daily log count
+   - Bash: `ls -la memory/.memory.sqlite 2>/dev/null | awk '{print $5}'` → SQLite index size
+   - Bash: `wc -l memory/.dreams/events.jsonl 2>/dev/null | awk '{print $1}'` → dream events count
 
-3. **Check dream database size**:
-   ```bash
-   ls -la memory/.memory.sqlite 2>/dev/null
-   wc -l memory/.dreams/events.jsonl 2>/dev/null
-   ```
+3. **Format output** per surface:
 
-4. **Format the output**:
-
+### CLI
 ```
-📊 Usage Stats
+📊 Resource Usage
 
 Memory:
-  Total size: <du output>
-  Files: <count>
-  MEMORY.md: <bytes>
+  Directory: <du>
+  Daily logs: <N> files
+  MEMORY.md: <size>
   SQLite index: <size>
 
-Dream tracking:
+Dreams:
   Events logged: <count>
-  Unique memories: <from short-term-recall.json>
+  Unique memories: <from agent_status>
 
-For token usage and cost: /usage or /cost (native)
-For session stats: /status (native)
+For session tokens/cost: /usage /cost /stats
 ```
 
-5. **Remind the user**:
-   - `/usage` or `/cost` — native Claude Code token/cost info
-   - `/stats` — more detailed native stats
+### WhatsApp
+```
+📊 *Resource Usage*
 
-## Notes
+*Memory:* <du>
+*Logs:* <N> files
+*Dreams:* <count> events, <unique> memories
 
-- This shows AGENT resource usage (memory, dreams, files).
-- Token/API usage is session-level — use native `/usage`.
-- If the memory directory is very large (> 500 MB), warn the user and suggest cleanup or archival.
+Session tokens: use CLI /usage
+```
+
+### Telegram
+```
+📊 **Resource Usage**
+
+**Memory:** <du>
+**Logs:** <N> files
+**Dreams:** <count> events, <unique> memories
+
+Session tokens: use CLI /usage
+```
+
+4. **Reply tool** if on messaging channel.
+
+## Important
+
+- If memory directory is huge (> 500 MB), suggest cleanup or archival.
+- Session tokens/cost are NOT available via the agent — they're CLI-only.
+- This is the agent-aware equivalent of OpenClaw's `/usage` command.

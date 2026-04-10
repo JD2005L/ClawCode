@@ -1,52 +1,82 @@
 ---
 name: new
-description: Start a new session — saves current context to memory first, then tells user to run /clear. Triggers on /agent:new, "nueva sesión", "new session", "empezar de nuevo", "reiniciar".
+description: Start a new session — save summary to memory first. Works from CLI or messaging channels. Triggers on /new, /agent:new, "nueva sesión", "new session", "empezar de nuevo".
 user-invocable: true
 ---
 
 # Start a New Session
 
-Save important context from the current session to memory, then prepare for a fresh session.
+Save the current session context to memory, then prepare for a fresh session.
 
 ## Why this exists
 
-Claude Code's native `/clear` drops all conversation context. If you just run `/clear`, the agent forgets everything that happened this session. `/agent:new` saves what matters first.
+- **On CLI**: Native `/clear` drops conversation. Without saving first, the agent forgets everything.
+- **On WhatsApp/Telegram**: There's no session concept per se, but the user might want to "close" a conversation topic. Save the summary so next time they chat, the agent has context.
 
 ## Steps
 
-1. **Summarize the current session** — what was discussed, decisions made, tasks completed, open items. Be concise (5-15 bullet points).
+1. **Detect surface** (CLI vs messaging channel).
 
-2. **Write the summary to today's daily log**:
+2. **Summarize the current session** — concisely (5-15 bullet points):
+   - What was discussed
+   - Decisions made
+   - Facts learned about the user
+   - Tasks completed
+   - Open items
+
+3. **Write the summary** to `memory/YYYY-MM-DD.md` (today's date). APPEND only:
    ```bash
    DATE=$(date +%Y-%m-%d)
-   # Append to memory/$DATE.md (create if doesn't exist)
+   TIME=$(date +%H:%M)
    ```
+   
    Format:
    ```markdown
-   ## Session summary (HH:MM)
-
-   - <bullet 1>
-   - <bullet 2>
-   - ...
-
+   
+   ## Session summary (<TIME>)
+   
+   - <bullet>
+   - <bullet>
+   
    ### Open items
-   - <pending thing>
+   - <pending>
    ```
+   
+   Use `cat >> memory/$DATE.md << 'EOF'` or similar to append.
 
-3. **Verify the write** succeeded (cat the file).
+4. **Verify** the file was updated (cat the last few lines).
 
-4. **Tell the user** what was saved and give the next step:
-   ```
-   Session summary saved to memory/YYYY-MM-DD.md.
+5. **Respond** per surface:
 
-   Now run /clear to start a fresh session. Your next session will
-   still remember this via memory_search.
-   ```
+### CLI
+```
+✅ Session summary saved to memory/<DATE>.md
 
-5. **Do NOT** try to invoke `/clear` yourself — you can't. Just tell the user.
+Now run /clear to start a fresh session. Your next session will
+remember this via memory_search.
+```
+
+### WhatsApp
+```
+✅ *Resumen guardado*
+
+Todo apuntado en memory/<DATE>.md. La próxima vez que me escribas, tendré este contexto.
+
+¿Algo más o cerramos esta conversación?
+```
+
+### Telegram
+```
+✅ **Session saved**
+
+Summary stored in memory/<DATE>.md. Next conversation will have this context.
+```
+
+6. **Do NOT** try to invoke `/clear` — you can't. Just tell the user (CLI) or move on (messaging).
 
 ## Important
 
-- If the session was trivial (just a greeting), skip the summary and just say "nothing important to save, go ahead and /clear".
-- Respect APPEND-only — never overwrite existing entries in the daily log.
-- This is the agent-aware version of `/clear`. It does the memory work first.
+- APPEND only — never overwrite.
+- If the session was trivial (just a greeting, no meaningful content), say "nothing worth saving" and skip.
+- On messaging channels, the "session" concept is fuzzy. Just save the recent conversation context and continue.
+- This is the agent-aware equivalent of OpenClaw's `/new` command.

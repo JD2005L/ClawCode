@@ -1,62 +1,70 @@
 ---
 name: status
-description: Show agent status — identity, memory stats, dream tracking, and native Claude Code session info. Triggers on /agent:status, "status del agente", "agent status", "cómo estás".
+description: Show agent status — identity, memory stats, dream tracking. Works from CLI or messaging channels (WhatsApp, Telegram, etc.). Triggers on /status, /agent:status, "status del agente", "agent status", "cómo estás".
 user-invocable: true
 ---
 
 # Agent Status
 
-Show a comprehensive status dashboard combining agent-specific info and native Claude Code session state.
+Show a status card with agent-specific info. Works from CLI or from any messaging channel.
 
 ## Steps
 
-1. **Call the `agent_status` MCP tool** to get:
-   - Your identity (name, emoji, vibe)
-   - Workspace path
-   - Memory backend (builtin / QMD) and features active
-   - Files and chunks indexed in memory
-   - Dream tracking stats (unique memories recalled)
+1. **Detect the surface**:
+   - CLI: no `<channel source="...">`
+   - Messaging: check the `<channel source="...">` metadata for platform
 
-2. **Read `agent-config.json`** (if exists) to show:
-   - Memory backend configuration
-   - Heartbeat schedule and active hours
-   - Dreaming schedule
+2. **Gather data**:
+   - Call `agent_status` MCP tool → identity, backend, files/chunks indexed, dream stats
+   - Call `agent_config` MCP tool with `action='get'` → memory backend, heartbeat schedule, dreaming schedule
+   - Bash: `date` for current time
+   - Bash: `cat .claude/scheduled_tasks.json 2>/dev/null` — to count active crons
+   - Bash: `ls -t memory/*.md 2>/dev/null | head -1` — most recent daily log
 
-3. **Check current date/time and cron status** via Bash:
-   ```bash
-   date
-   cat .claude/scheduled_tasks.json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'{len(d)} crons configured')" 2>/dev/null || echo "No crons"
-   ```
+3. **Format the output** per surface:
 
-4. **Format the output** as a clean status dashboard:
-
+### CLI
 ```
-🤖 <Agent Name> <emoji>
+🤖 <Name> <emoji>
+Session: local · updated just now
+Memory: <N> files, <M> chunks · <backend> (<features>)
+Dreams: <X> unique memories recalled
+Crons: heartbeat <schedule>, dreaming <schedule>
+Last daily log: <date>
 
-Identity: <vibe description>
-Workspace: <path>
-
-Memory:
-  Backend: <backend> (<features>)
-  Indexed: <N> files, <M> chunks
-  Dreams: <X> unique memories recalled
-
-Schedule:
-  Heartbeat: <schedule> (active hours: <start>-<end>)
-  Dreaming: <schedule>
-  Crons running: <N>
-
-For native session info (tokens, cost, model), run: /status
+For tokens/cost: /usage or /cost
+For MCP servers: /mcp
 ```
 
-5. **Remind the user** about native Claude Code commands:
-   - `/status` — native session status dialog
-   - `/usage` or `/cost` — token usage
-   - `/model` — current model
-   - `/mcp` — MCP server connections
+### WhatsApp (single *bold*, no headers)
+```
+🤖 *<Name>* <emoji>
 
-## Notes
+*Memory:* <N> files, <M> chunks
+*Backend:* <backend>
+*Dreams:* <X> memories recalled
+*Crons:* heartbeat ✓, dreaming ✓
 
-- This does NOT replace `/status` (native). It complements it with agent-specific info.
-- For token usage / model / cost, the user runs the native commands.
-- If `agent-config.json` doesn't exist, just show defaults.
+Last log: <date>
+```
+
+### Telegram (**bold**)
+```
+🤖 **<Name>** <emoji>
+
+**Memory:** <N> files, <M> chunks
+**Backend:** <backend>
+**Dreams:** <X> memories recalled
+**Crons:** heartbeat ✓, dreaming ✓
+
+Last log: <date>
+```
+
+4. **Reply tool usage**: If on a messaging channel, use the channel's `reply` tool (e.g., `reply` from whatsapp plugin). If on CLI, just output the text.
+
+## Important
+
+- NEVER say "I'm Claude" — use the agent's name from IDENTITY.md.
+- On WhatsApp/Telegram, the agent responds via the messaging plugin's `reply` tool AND responds in the terminal too (they go to different places).
+- If memory is empty or crons not set up, say so explicitly.
+- This is the agent-aware equivalent of OpenClaw's `/status` command.

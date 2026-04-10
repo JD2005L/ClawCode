@@ -1,59 +1,81 @@
 ---
 name: compact
-description: Force a memory flush before context compaction — saves important info to daily log, then tells user to run /compact. Triggers on /agent:compact, "compactar con memoria", "agent compact", "guardar y compactar".
+description: Force memory flush before context compaction — save important info to daily log. Works from CLI or messaging channels. Triggers on /compact, /agent:compact, "compactar", "save and compact".
 user-invocable: true
 ---
 
 # Agent-Aware Compact
 
-Save important session context to memory BEFORE running native `/compact`. This prevents loss of information during context compression.
+Save important session context to memory before context compression.
 
-## Why this exists
+## Context
 
-Native `/compact` compresses conversation history to save tokens, but the compression is lossy. Without saving first, important facts can be lost. The PreCompact hook already does this passively, but `/agent:compact` is the explicit manual version.
+- **CLI**: The user is about to run native `/compact`. Save first to prevent information loss.
+- **Messaging channels**: There's no "compact" concept — but the user might want to force a checkpoint of what's been discussed. Treat it as "save everything important now".
 
 ## Steps
 
-1. **Scan the current session** for information worth keeping:
-   - Decisions made
-   - Facts the user shared (names, preferences, dates, IDs)
-   - Tasks completed or pending
-   - Problems solved and their solutions
-   - Any corrections or clarifications from the user
+1. **Detect surface** (CLI vs messaging).
 
-2. **Write a memory flush entry** to today's daily log:
+2. **Scan for information worth keeping**:
+   - Decisions made this session
+   - Facts the user shared (names, preferences, IDs, dates)
+   - Tasks completed or pending
+   - Problems solved and solutions
+   - Corrections/clarifications from the user
+
+3. **Write memory flush entry** to `memory/YYYY-MM-DD.md`. APPEND only:
    ```bash
    DATE=$(date +%Y-%m-%d)
-   # Append to memory/$DATE.md
+   TIME=$(date +%H:%M)
    ```
+   
    Format:
    ```markdown
-   ## Memory flush (HH:MM) — pre-compact
-
+   
+   ## Memory flush (<TIME>) — manual
+   
    ### Decisions
    - ...
-
+   
    ### Facts learned
    - ...
-
+   
    ### Open items
    - ...
    ```
 
-3. **Verify the write**.
+4. **Verify** the write.
 
-4. **Tell the user** to proceed with native compact:
-   ```
-   ✅ Memory flush complete. Key info saved to memory/YYYY-MM-DD.md.
+5. **Respond** per surface:
 
-   Now run /compact to compress the session context. You can search the
-   flushed info later with memory_search.
-   ```
+### CLI
+```
+✅ Memory flush complete. Saved to memory/<DATE>.md
 
-5. **Do NOT** try to invoke `/compact` yourself. Just prepare and instruct.
+Now run /compact to compress the session. The flushed info is
+searchable via memory_search.
+```
+
+### WhatsApp
+```
+✅ *Guardado*
+
+Los puntos clave están en memory/<DATE>.md. Sigo atento a lo siguiente.
+```
+
+### Telegram
+```
+✅ **Saved**
+
+Key points stored in memory/<DATE>.md. Ready for the next message.
+```
+
+6. **Do NOT** invoke `/compact` yourself — you can't. On CLI, tell the user. On messaging, just save and continue.
 
 ## Important
 
-- APPEND only — never overwrite daily log entries.
-- If there's nothing substantive to save, say so and tell the user they can run `/compact` directly.
-- The PreCompact hook already fires automatically on auto-compaction. This skill is for MANUAL compaction where you want to be extra thorough.
+- APPEND only, never overwrite.
+- If nothing substantive to save, say so: "Nada importante que guardar, puedes seguir normal".
+- The PreCompact hook fires automatically on native auto-compaction. `/compact` is the manual version.
+- This is the agent-aware equivalent of OpenClaw's `/compact` command.
