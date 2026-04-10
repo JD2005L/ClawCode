@@ -72,4 +72,5 @@ Use `**bold**`, headers are fine.
 - This is PURELY informational. It does not modify state.
 - Get REAL data from `agent_status`, `agent_config`, and the filesystem. Never fabricate numbers.
 - The token/cost fields come from Claude Code's session (which the plugin can't access directly). Show "—" for those or recommend the native `/usage` for cost details.
+- For MCP server connection details (which plugins are active), the user can run native `/mcp` in the CLI — this shows all connected MCP servers. Our `/status` focuses on agent state, not MCP plumbing.
 - This is the agent-aware equivalent of OpenClaw's `/status`.
