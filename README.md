@@ -4,7 +4,9 @@
 
 Claude Code is stateless by default. Every session starts from zero — no memory of who you are, what you talked about, or how the agent should behave. If you want a persistent AI agent that remembers, dreams, and has a personality, you need to build all of that yourself.
 
-ClawCode is a plugin that turns Claude Code into a stateful agent. It gives Claude a persistent identity (name, personality, vibe), a searchable memory system with full-text search and temporal decay, nightly dreaming that consolidates important memories, and periodic heartbeats that keep the agent aware of what matters. Compatible with the [OpenClaw](https://github.com/openclaw/openclaw) agent format — import existing agents with one command.
+ClawCode is a plugin that turns Claude Code into a stateful agent. It gives Claude a persistent identity (name, personality, vibe), a searchable memory system with full-text search and temporal decay, nightly dreaming that consolidates important memories, and periodic heartbeats that keep the agent aware of what matters.
+
+The agent is **terse by default** — it does things instead of narrating them. "Guardado. 🍣" not "I will now proceed to save your message to the daily memory log..." It also has **active memory**: at the start of every turn, it automatically recalls relevant context from prior conversations — bilingual (Spanish ↔ English), date-aware ("what did we discuss yesterday?"), and safety-critical (warns about allergies before suggesting food).
 
 ## Prerequisites
 
@@ -84,6 +86,7 @@ One-time ritual. After that, the agent wakes up with its personality on every se
 | `/agent:skill install\|list\|remove` | Install community skills from GitHub, list installed, remove by name |
 | `/agent:channels [list\|status\|launch]` | Show messaging channel status and the launch command |
 | `/agent:service install\|status\|uninstall\|logs` | Run the agent as an always-on launchd/systemd service |
+| `/agent:voice status\|setup\|test` | Set up and test TTS / STT backends |
 | `/agent:messaging` | Set up a messaging channel (WhatsApp, Telegram, Discord, iMessage, Slack) |
 | `/agent:status` | Agent status dashboard (identity + memory + dream stats) |
 | `/agent:usage` | Agent resource usage (memory size, files, dreams) |
@@ -107,6 +110,8 @@ One-time ritual. After that, the agent wakes up with its personality on every se
 | `skill_list` | List installed skills across plugin / project / user scopes |
 | `skill_remove` | Remove a skill (requires `confirm: true`) |
 | `channels_detect` | Report installed/authenticated/active messaging channels and build a launch command |
+| `list_commands` | Live discovery of installed skills + MCP tools for dynamic `/help` and UIs |
+| `voice_speak` / `voice_transcribe` / `voice_status` | TTS and STT across sag / ElevenLabs / OpenAI / macOS say / Whisper |
 | `service_plan` | Plan always-on service install/uninstall/status/logs (returns file content + commands; executed by skill) |
 | `chat_inbox_read` | Read pending WebChat messages (only when HTTP bridge is on) |
 | `webchat_reply` | Send a reply to the open WebChat browser (only when HTTP bridge is on) |
@@ -126,14 +131,15 @@ After changes: `/mcp` to apply.
 
 | What you changed | Auto-refresh? | What to do |
 | --- | --- | --- |
-| `agent-config.json` | No | Run `/mcp` to reload |
+| `agent-config.json` (non-critical: halfLifeDays, mmrLambda, etc.) | Yes | Live-config watcher applies changes automatically |
+| `agent-config.json` (critical: memory.backend, http.enabled, etc.) | No | Run `/mcp` — agent will tell you if needed |
 | Personality files (SOUL, IDENTITY, USER) | No | Run `/mcp` to reload |
 | Memory files (`memory/*.md`) | Yes | Next `memory_search` re-indexes automatically |
 | Crons (via CronCreate) | Yes | Takes effect immediately (in-session) |
 | HTTP bridge on/off | No | Run `/mcp` to start/stop |
 | New skills in `./skills/` | Partial | Agent reads them when triggered, but update AGENTS.md for discovery |
 
-**Rule of thumb:** if it's in `agent-config.json` or a personality file, run `/mcp` after changing it. Memory and crons are live.
+**Rule of thumb:** most config changes apply live. The agent tells you when `/mcp` is needed (critical changes like switching memory backend or enabling the HTTP bridge). Memory and crons are always live.
 
 ## Personality files
 
@@ -184,6 +190,8 @@ These files are injected as system instructions via MCP — every conversation g
 - **MMR** — diversity re-ranking to avoid redundant results
 - **Chunking** — 400 tokens with 80 token overlap
 - **Keyword extraction** — English + Spanish stop word filtering
+- **Bilingual synonyms** — 40+ ES↔EN pairs (perro↔dog, camarón↔shrimp, cumpleaños↔birthday) so Spanish questions find English memory and vice versa
+- **Date expansion** — "hoy", "ayer", "today", "yesterday" resolve to actual dates for daily log matching
 - Works out of the box, no extra tools needed
 
 ### QMD (optional)
@@ -197,6 +205,16 @@ These files are injected as system instructions via MCP — every conversation g
 - Install: `bun install -g qmd`
 - Enable: `agent_config(action='set', key='memory.backend', value='qmd')`
 - Falls back to builtin automatically if QMD fails
+
+### Active memory (turn-start reflex)
+
+At the start of every substantive turn, the agent automatically calls `memory_context` to recall relevant prior context **before** responding. This means:
+
+- Ask "how's my dog?" → agent finds "Cookie, 12kg, loves carrots" without you saying "search memory"
+- Suggest "recommend seafood" → agent warns about your shrimp allergy before listing options
+- Ask "what did we decide yesterday?" → date expansion finds yesterday's daily log
+
+Trivial messages (greetings, "ok", slash commands) skip the search — no wasted work. The reflex uses bilingual synonym expansion, so a Spanish question finds English memory.
 
 ### Memory lifecycle
 
@@ -395,6 +413,47 @@ Default: off, port 18790, localhost only. Configure via `agent-config.json`:
 { "http": { "enabled": true, "port": 18790, "host": "127.0.0.1", "token": "" } }
 ```
 
+### Voice (TTS / STT)
+
+The agent can speak and listen. Backends are detected automatically:
+
+**Text-to-Speech (TTS):**
+
+| Backend | Requirements | Notes |
+| --- | --- | --- |
+| **sag** | `brew install sag` + `ELEVENLABS_API_KEY` | Best quality — ElevenLabs voices via local CLI |
+| **ElevenLabs API** | `ELEVENLABS_API_KEY` | Direct API, no binary needed |
+| **OpenAI TTS** | `OPENAI_API_KEY` | `tts-1` or `tts-1-hd` models |
+| **macOS `say`** | macOS only | Free, offline, always available on Mac |
+
+**Speech-to-Text (STT):**
+
+| Backend | Requirements | Notes |
+| --- | --- | --- |
+| **whisper-cli** | Install Whisper locally | Offline, private, fast |
+| **OpenAI Whisper API** | `OPENAI_API_KEY` | Cloud-based, supports 50+ languages |
+
+Enable voice: `agent_config(action='set', key='voice.enabled', value='true')`
+
+Check status: `/agent:voice status`
+
+The agent auto-selects the best available backend (sag > ElevenLabs > OpenAI > say). Override with `agent_config(action='set', key='voice.tts.preferred', value='say')`.
+
+WhatsApp voice messages are handled by the WhatsApp plugin's own Whisper integration (`/whatsapp:configure audio`) — separate from ClawCode's voice system.
+
+### Community skills
+
+Install skills from GitHub:
+
+```
+/agent:skill install alice/pomodoro
+/agent:skill install alice/skills@main#weather
+/agent:skill list
+/agent:skill remove pomodoro
+```
+
+Sources support `owner/repo`, `owner/repo@branch`, `owner/repo#subdir`, and full URLs. Skills are validated before install — OpenClaw-flavored skills are rejected with a redirect to `/agent:import`. OS and dependency requirements are checked and surfaced as warnings.
+
 ### Multiple agents
 
 Each agent = its own folder. Switch: `cd ~/other-agent && claude`.
@@ -482,16 +541,21 @@ systemctl --user enable --now clawcode-agent
 | QMD | Built-in option | Optional via `agent_config` |
 | Bootstrap | Conversational | Conversational |
 | Config | `openclaw.json` | `agent-config.json` + `agent_config` tool |
-| Voice/TTS | Built-in | Not included |
+| Voice/TTS | Built-in | sag, ElevenLabs, OpenAI TTS, macOS say, Whisper STT |
 
 ## Troubleshooting
 
+Run `/agent:doctor` first — it checks config, identity, memory, SQLite, QMD, bootstrap, HTTP bridge, messaging, and dreaming in one shot. Add `--fix` to auto-repair what it can.
+
 - **Agent has no personality after setup** — Run `/mcp` to reload the MCP server. The personality is injected via system instructions on each session start.
 - **Memory search returns nothing** — The SQLite index builds automatically on first search. If using QMD, check that `qmd` is installed and the backend is set: `agent_config(action='set', key='memory.backend', value='qmd')`.
+- **Agent doesn't remember things across questions** — The active memory reflex (`memory_context`) runs at turn start. If it's not finding results, try asking with different keywords — the bilingual synonyms cover common terms but not everything.
 - **Dreaming never runs** — Crons only run while Claude Code is open. Check with `dream(action='status')`. For manual consolidation: `dream(action='run')`.
 - **Heartbeat runs outside active hours** — Set active hours: `agent_config(action='set', key='heartbeat.activeHours.start', value='08:00')`.
+- **Which messaging channels are set up?** — Run `/agent:channels status` to see installed, authenticated, and active channels with the exact launch command.
 - **Import from OpenClaw fails** — Make sure `~/.openclaw/` exists and contains workspace directories. Run `/agent:import` for an interactive walkthrough.
 - **BOOTSTRAP.md won't delete** — The agent deletes it at the end of the bootstrap ritual. If it persists, the ritual didn't complete — run through it again or delete manually.
+- **Config change didn't take effect** — Non-critical settings (halfLifeDays, mmrLambda) apply live. Critical settings (memory.backend, http.enabled) need `/mcp`. The agent tells you which.
 
 ## License
 
