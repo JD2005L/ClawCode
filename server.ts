@@ -8,6 +8,7 @@ import fs from "fs";
 import path from "path";
 import { loadConfig, saveConfig } from "./lib/config.ts";
 import { DreamEngine } from "./lib/dreaming.ts";
+import { HttpBridge, HTTP_DEFAULTS } from "./lib/http-bridge.ts";
 import { extractKeywords } from "./lib/keywords.ts";
 import { MemoryDB } from "./lib/memory-db.ts";
 import { QmdManager } from "./lib/qmd-manager.ts";
@@ -70,6 +71,38 @@ if (config.memory.backend === "qmd") {
     // QMD init failed — fall back to builtin silently
     qmdManager = null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// HTTP Bridge (optional — off by default)
+// ---------------------------------------------------------------------------
+
+const httpConfig = {
+  enabled: config.http?.enabled ?? HTTP_DEFAULTS.enabled,
+  port: config.http?.port ?? HTTP_DEFAULTS.port,
+  host: config.http?.host ?? HTTP_DEFAULTS.host,
+  token: config.http?.token ?? HTTP_DEFAULTS.token,
+};
+
+let httpBridge: HttpBridge | null = null;
+if (httpConfig.enabled) {
+  httpBridge = new HttpBridge(httpConfig, WORKSPACE, {
+    getIdentity: () => {
+      try {
+        return fs.readFileSync(path.join(WORKSPACE, "IDENTITY.md"), "utf-8").trim();
+      } catch {
+        return "(no IDENTITY.md)";
+      }
+    },
+    getMemoryStats: () => memoryDB.stats(),
+    getConfig: () => {
+      try {
+        return loadConfig(WORKSPACE);
+      } catch {
+        return {};
+      }
+    },
+  });
 }
 
 /**
@@ -766,3 +799,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
+
+// Start HTTP bridge if enabled (non-blocking — failure doesn't crash the MCP server)
+if (httpBridge) {
+  httpBridge.start().catch(() => {
+    // Logged inside HttpBridge — nothing else to do
+  });
+}

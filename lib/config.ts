@@ -7,6 +7,17 @@ import fs from "fs";
 import path from "path";
 
 export interface AgentConfig {
+  /** HTTP bridge — optional local HTTP server for webhooks, status, and API access */
+  http?: {
+    /** Enable the HTTP bridge (default: false) */
+    enabled?: boolean;
+    /** Port to listen on (default: 18790) */
+    port?: number;
+    /** Host to bind to (default: "127.0.0.1" — localhost only) */
+    host?: string;
+    /** Bearer token for authenticated endpoints. Empty = no auth required. */
+    token?: string;
+  };
   /** Heartbeat configuration */
   heartbeat?: {
     /** Cron schedule (default: every 30 min) */
@@ -105,6 +116,9 @@ export function loadConfig(pluginRoot: string): AgentConfig {
     const parsed = JSON.parse(raw);
     // Deep merge with defaults
     return {
+      http: parsed.http ? { ...parsed.http } : undefined,
+      heartbeat: parsed.heartbeat ? { ...parsed.heartbeat } : undefined,
+      dreaming: parsed.dreaming ? { ...parsed.dreaming } : undefined,
       memory: {
         ...DEFAULT_CONFIG.memory,
         ...parsed.memory,
