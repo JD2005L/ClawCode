@@ -479,27 +479,6 @@ systemctl --user enable --now clawcode-agent
 - **Import from OpenClaw fails** — Make sure `~/.openclaw/` exists and contains workspace directories. Run `/agent:import` for an interactive walkthrough.
 - **BOOTSTRAP.md won't delete** — The agent deletes it at the end of the bootstrap ritual. If it persists, the ritual didn't complete — run through it again or delete manually.
 
-## Testing
-
-245 automated tests across 4 tiers:
-
-| Tier | What | Tests |
-| --- | --- | --- |
-| **1a–1e** | MCP tools, internals, skills, HTTP bridge, doctor | 130 (no API, <10s) |
-| **2–2i** | Agent behavior via `claude -p` — identity, memory, import, commands, UX | 104 (real API, ~15min) |
-| **3b** | REPL cron import end-to-end | 8 (expect, ~3min) |
-| **4** | WebChat E2E via Chrome MCP | 8 (browser, ~2min) |
-
-Run all:
-
-```sh
-bash tests/run-tests.sh       # All tiers
-bash tests/run-tests.sh 1     # Tier 1 only (fast)
-bash tests/run-tests.sh 2     # Tier 2 only (needs API)
-```
-
-See `tests/README.md` for details and `tests/manual-protocol.md` for REPL-based manual tests.
-
 ## License
 
 MIT
