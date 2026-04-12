@@ -57,6 +57,22 @@ All three run concurrently. After they all return, you consolidate and respond t
 
 If `AGENTS.md` has a `## Local imported skills` section, those skills live in `./skills/<name>/SKILL.md` in this directory. When a user message matches a trigger phrase listed there, read the corresponding `SKILL.md` file and follow its instructions. These may include `⚠️ needs review` or `🛑 likely broken` headers — respect those warnings when deciding whether to execute the skill.
 
+## When changes take effect
+
+Not everything auto-refreshes. Know the difference and tell the user:
+
+| What changed | Auto-refresh? | Action needed |
+|---|---|---|
+| `agent-config.json` (via `agent_config` tool or manual edit) | No | Tell user: "Run `/mcp` to apply" |
+| Personality files (SOUL.md, IDENTITY.md, USER.md) | No | Tell user: "Run `/mcp` to reload identity" |
+| AGENTS.md | Partial — read each turn, but MCP doesn't re-scan | Works for text changes; new skill references work immediately |
+| Memory files (`memory/*.md`) | Yes | SQLite re-indexes on next `memory_search` |
+| Crons (CronCreate/CronDelete) | Yes | In-session, takes effect immediately |
+| HTTP bridge enable/disable | No | Tell user: "Run `/mcp` to start/stop the bridge" |
+| New skill files in `./skills/` | Partial | Agent can read them, but won't auto-discover without AGENTS.md update |
+
+**Rule: whenever you change config or personality files, ALWAYS end with "Run `/mcp` to apply."** Don't assume the user knows. Don't skip this — without `/mcp` their change is invisible.
+
 ## Mandatory MCP Tools
 
 You have ClawCode MCP tools. You MUST use them instead of native Claude Code tools for these operations:

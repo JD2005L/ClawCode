@@ -117,6 +117,19 @@ agent_config(action='set', key='memory.builtin.halfLifeDays', value='60')
 
 After changes: `/mcp` to apply.
 
+### When changes take effect
+
+| What you changed | Auto-refresh? | What to do |
+| --- | --- | --- |
+| `agent-config.json` | No | Run `/mcp` to reload |
+| Personality files (SOUL, IDENTITY, USER) | No | Run `/mcp` to reload |
+| Memory files (`memory/*.md`) | Yes | Next `memory_search` re-indexes automatically |
+| Crons (via CronCreate) | Yes | Takes effect immediately (in-session) |
+| HTTP bridge on/off | No | Run `/mcp` to start/stop |
+| New skills in `./skills/` | Partial | Agent reads them when triggered, but update AGENTS.md for discovery |
+
+**Rule of thumb:** if it's in `agent-config.json` or a personality file, run `/mcp` after changing it. Memory and crons are live.
+
 ## Personality files
 
 Every agent has these files in its root. Templates live in `templates/` and are copied on `/agent:create`.
