@@ -357,11 +357,13 @@ The agent never says "I'm Claude" — it uses its name from IDENTITY.md. Even wh
 
 Run `/agent:doctor` first — it checks everything in one shot. Add `--fix` to auto-repair safe issues.
 
-- **Agent has no personality** — Run `/mcp` to reload.
+- **"Failed to reconnect to plugin:agent:clawcode"** — Dependencies didn't install. Check Node.js v18+ (`node --version`). Then try manually: close Claude, run `cd ~/.claude/plugins/cache/clawcode/agent/*/  && npm install`, reopen Claude.
+- **Agent has no personality** — Run `/mcp` to reload. The SessionStart hook injects identity from SOUL.md + IDENTITY.md.
 - **Memory search returns nothing** — Index builds on first search. For QMD: `agent_config(action='set', key='memory.backend', value='qmd')`.
 - **Agent doesn't remember things** — The active memory reflex uses bilingual synonyms but not everything. Try different keywords.
 - **Config change didn't take effect** — Non-critical settings apply live. Critical ones need `/mcp`. The agent tells you which.
 - **Messaging channels** — Run `/agent:channels status` for installed/authenticated/active status.
+- **Crons don't persist across restarts** — Known limitation: `durable: true` is currently session-only in Claude Code. Crons are recreated automatically at each session start via the SessionStart hook (default heartbeat + dreaming). For 24/7, use `/agent:service install`.
 
 ## [Important](#important)
 

@@ -4,7 +4,7 @@
       "command": "bash",
       "args": [
         "-c",
-        "npm install --prefix \"${CLAUDE_PLUGIN_ROOT}\" --silent >/dev/null 2>&1; exec \"${CLAUDE_PLUGIN_ROOT}/node_modules/.bin/tsx\" \"${CLAUDE_PLUGIN_ROOT}/server.ts\""
+        "cd \"${CLAUDE_PLUGIN_ROOT}\" && if [ ! -f node_modules/.bin/tsx ]; then echo '[clawcode] Installing dependencies (first run)...' >&2; npm install --prefix \"${CLAUDE_PLUGIN_ROOT}\" 2>&1 | tail -5 >&2; fi && if [ ! -f node_modules/.bin/tsx ]; then echo '[clawcode] ERROR: npm install failed. Check Node.js v18+ is installed: node --version' >&2; echo '[clawcode] Try manually: npm install --prefix \"${CLAUDE_PLUGIN_ROOT}\"' >&2; exit 1; fi && exec node_modules/.bin/tsx server.ts"
       ]
     }
   }
