@@ -11,3 +11,11 @@ memory/.memory.sqlite-wal
 memory/.memory.sqlite-shm
 memory/.dreams/
 DREAMS.md
+.DS_Store
+.env
+.env.local
+.env.*.local
+*.log
+*.swp
+*.swo
+*.bak
