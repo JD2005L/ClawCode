@@ -41,6 +41,7 @@ ClawCode turns Claude Code into a stateful autonomous agent. It gives Claude a p
 - **[Smart import](#importing-agents)** — 3-tier classifier (GREEN/YELLOW/RED) for skills and crons. Step-by-step wizard with clickable options. Skipped items go to a backlog with recovery notes.
 - **[Community skills](#community-skills)** — install from GitHub with `owner/repo@branch#subdir`. OS + dependency validation.
 - **[Always-on](#always-on-service)** — launchd / systemd service. Enables dreaming + heartbeat 24/7.
+- **[Webhooks](#webhooks)** — external systems (Cloudflare Workers, GitHub Actions, CI/CD, IoT) can POST events to the agent via HTTP. The agent processes them like any other message.
 - **[Doctor](#diagnostics)** — 9 health checks (config, identity, memory, SQLite, QMD, bootstrap, HTTP, messaging, dreaming). `--fix` auto-repairs safe issues.
 - **[Terse by design](#how-it-works)** — the agent acts, doesn't narrate. Confirmations in 1-2 lines, no preambles, no recaps.
 
@@ -185,6 +186,27 @@ Full details: [`docs/channels.md`](docs/channels.md)
 6. **Messaging** — offers WhatsApp, Telegram, Discord, iMessage setup.
 
 Files are copied **clean** — no annotations, no comments. Adaptation details go to `IMPORT_BACKLOG.md` so the user can revisit skipped items later. The import event is logged to memory so the agent remembers what was imported.
+
+### [Webhooks](#webhooks)
+
+External systems can send events to the agent via `POST /v1/webhook` (requires HTTP bridge enabled). The agent queues them and processes on the next turn.
+
+Use cases:
+- **CI/CD** — GitHub Actions sends build results → agent summarizes and notifies via WhatsApp
+- **Cloudflare Workers** — edge function triggers agent actions on schedule or on demand
+- **Monitoring** — uptime checker sends alert → agent investigates and reports
+- **IoT** — sensor data arrives → agent logs to memory and acts on thresholds
+- **Custom integrations** — any system that can POST JSON can talk to your agent
+
+```sh
+curl -X POST http://localhost:18790/v1/webhook \
+  -H "Content-Type: application/json" \
+  -d '{"event": "deploy", "status": "success", "repo": "my-app"}'
+```
+
+Queue holds up to 1000 events. Drain with `GET /v1/webhooks` or the `chat_inbox_read` MCP tool.
+
+Full details: [`docs/http-bridge.md`](docs/http-bridge.md)
 
 ### [Diagnostics](#diagnostics)
 

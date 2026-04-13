@@ -23,6 +23,7 @@ Master index of every capability. The agent reads this first when it needs to re
 | Feature | Doc | Config key | Default | Notes |
 |---|---|---|---|---|
 | HTTP bridge | [http-bridge.md](http-bridge.md) | `http.enabled` | `false` | Local HTTP server for status, webhooks, skills |
+| Webhooks | [webhooks.md](webhooks.md) | `http.enabled` | `false` | External systems POST events to the agent (CI/CD, Cloudflare, IoT) |
 | WebChat | [webchat.md](webchat.md) | `http.enabled` | `false` | Browser chat UI served by the HTTP bridge |
 | Always-on service | [service.md](service.md) | — (installed via skill) | not installed | Run agent as launchd / systemd service 24/7 |
 | Voice (TTS + STT) | [voice.md](voice.md) | `voice.enabled` | `false` | Speak text, transcribe audio — backends: sag, elevenlabs, openai-tts, say, whisper |
