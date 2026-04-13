@@ -6,55 +6,45 @@ user-invocable: true
 
 # Help — list commands
 
-Show a concise list of all available commands. Adapt the output to the current surface (CLI, WhatsApp, Telegram, etc.).
+Show a concise, LIVE list of all available commands. Never hardcode — always pull from the `list_commands` MCP tool so recently installed or removed skills are reflected.
 
 ## Steps
 
-1. **Detect the surface**. If there's a `<channel source="...">` in the incoming message, you're on a messaging channel. Otherwise you're on CLI.
+1. **Detect the surface.** If the incoming message has a `<channel source="...">` marker, you're on a messaging channel. Otherwise you're on CLI or WebChat.
 
-2. **Format the output** according to the surface:
-   - **CLI**: normal markdown
-   - **WhatsApp**: single `*bold*`, no headers
-   - **Telegram**: `**bold**` or HTML
-   - **Discord**: markdown
-   - **iMessage**: plain text (no markdown)
+2. **Call `list_commands`** with the right format:
+   - **CLI / WebChat:** `list_commands({ format: "table", includeTools: false })` — grouped markdown, readable.
+   - **Messaging (WhatsApp, Telegram, Discord, iMessage):** `list_commands({ format: "compact", includeTools: false })` — one line per command, mobile-friendly.
 
-3. **List the commands**:
+   Leave `includeTools: false` for the user-facing help — MCP tools are agent-invoked, not user-typed. Users who want the internals can ask "what MCP tools do you have?" and you call with `includeTools: true`.
 
-### Agent commands (available everywhere)
+3. **Print the output** from the tool as-is. Do not rewrite or reorder.
 
-```
-/status     — Agent status & memory stats
-/usage      — Memory and resource usage
-/whoami     — Who you are and which channel
-/help       — This message
-/new        — Start new session (saves summary first)
-/compact    — Save context before compaction
-/memory     — Memory stats
-/context    — What's loaded in context
-```
+4. **Adapt formatting to the channel** after the tool output:
+   - WhatsApp: strip `**bold**` → `*bold*`, remove markdown headers if too noisy
+   - Telegram: keep `**bold**` or convert to HTML
+   - Discord: markdown as-is
+   - iMessage: strip markdown to plain text
+   - CLI / WebChat: markdown as-is
 
-### Agent skills (CLI + ask the agent)
+5. **Append a short native-tools note** at the end (only on CLI):
+   ```
+   Native Claude Code commands (CLI only): /status /usage /cost /compact /clear /mcp /model /help
+   ```
 
-```
-/agent:create     — Create a new agent
-/agent:import     — Import from OpenClaw
-/agent:crons      — Import crons
-/agent:heartbeat  — Manual heartbeat
-/agent:settings   — Config (memory backend, QMD)
-/agent:messaging  — Set up WhatsApp/Telegram/Discord
-```
+## Example flows
 
-### Native Claude Code (CLI only — NOT on messaging channels)
+### CLI user asks `/help`
 
-```
-/status /usage /cost /compact /clear /mcp /model /help
-```
+Call `list_commands({ format: "table", includeTools: false })`. Print the returned markdown. Append the native-tools note.
 
-On messaging channels, use the agent commands above (without `/agent:` prefix) — the agent will handle them.
+### WhatsApp user says "what can you do?"
+
+Call `list_commands({ format: "compact", includeTools: false })`. Convert any `**bold**` to `*bold*`. Don't include the native-tools note (doesn't apply).
 
 ## Notes
 
-- On WhatsApp, native Claude Code commands (like `/compact`) don't work. The agent recognizes the text and acts accordingly.
 - `/help` and `/commands` are aliases.
-- Keep the response short on mobile channels.
+- Keep the response short on mobile channels. `compact` format handles that.
+- If the user wants the internals ("tools", "MCP"), call with `includeTools: true` so they see them too.
+- If nothing comes back, something's wrong with the install — suggest `/agent:doctor`.

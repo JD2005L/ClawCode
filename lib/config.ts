@@ -18,6 +18,34 @@ export interface AgentConfig {
     /** Bearer token for authenticated endpoints. Empty = no auth required. */
     token?: string;
   };
+  /** Voice (TTS + STT) configuration */
+  voice?: {
+    /** Master switch. Default: false (opt-in). */
+    enabled?: boolean;
+    /** TTS backend preference: "auto" (pick first available) or a specific backend. */
+    defaultBackend?: "auto" | "sag" | "elevenlabs" | "openai-tts" | "say";
+    /** STT backend preference. */
+    defaultSttBackend?: "auto" | "whisper-cli" | "hf-whisper" | "openai-whisper";
+    /** Shared STT tuning (applies to whisper-cli and hf-whisper). */
+    stt?: {
+      /** Model size for local backends. Smaller = faster, larger = more accurate. */
+      model?: "tiny" | "base" | "small";
+      /** Quality preset — maps to beam size + dtype depending on backend. */
+      quality?: "fast" | "balanced" | "best";
+    };
+    /** Default voice name/id (e.g. "Clawd" for sag, "alloy" for OpenAI). */
+    defaultVoice?: string;
+    /** Where generated audio files go. Default: /tmp. */
+    outputDir?: string;
+    elevenlabs?: {
+      model?: string;
+      voiceId?: string;
+    };
+    openai?: {
+      model?: string;
+      voice?: string;
+    };
+  };
   /** Active-memory / memory_context tool configuration */
   memoryContext?: {
     /** Master switch. Default: true (opt-out). When false, the tool short-circuits with "disabled". */
@@ -128,6 +156,7 @@ export function loadConfig(pluginRoot: string): AgentConfig {
     // Deep merge with defaults
     return {
       http: parsed.http ? { ...parsed.http } : undefined,
+      voice: parsed.voice ? { ...parsed.voice } : undefined,
       memoryContext: parsed.memoryContext ? { ...parsed.memoryContext } : undefined,
       heartbeat: parsed.heartbeat ? { ...parsed.heartbeat } : undefined,
       dreaming: parsed.dreaming ? { ...parsed.dreaming } : undefined,

@@ -8,6 +8,12 @@ import fs from "fs";
 import path from "path";
 import { loadConfig, saveConfig } from "./lib/config.ts";
 import {
+  getLiveConfig,
+  initLiveConfig,
+  startConfigWatcher,
+  type CriticalChange,
+} from "./lib/live-config.ts";
+import {
   formatFixReport,
   formatReport,
   runDoctor,
@@ -29,6 +35,17 @@ import {
   remove as skillRemove,
 } from "./lib/skill-manager.ts";
 import { buildPlan as buildServicePlan } from "./lib/service-generator.ts";
+import {
+  discoverCommands,
+  formatCommandsCompact,
+  formatCommandsTable,
+} from "./lib/command-discovery.ts";
+import {
+  formatVoiceStatus,
+  getVoiceStatus,
+  speak as voiceSpeak,
+  transcribe as voiceTranscribe,
+} from "./lib/voice.ts";
 import { extractKeywords } from "./lib/keywords.ts";
 import { MemoryDB } from "./lib/memory-db.ts";
 import { QmdManager } from "./lib/qmd-manager.ts";
@@ -51,12 +68,16 @@ const DREAMS_DIR = path.join(MEMORY_DIR, ".dreams");
 // Config + Memory backends
 // ---------------------------------------------------------------------------
 
+// Startup config — used to bootstrap long-lived state (DB, QMD, HTTP server).
+// For values that should apply live, call getLiveConfig() inside tool handlers.
 let config: ReturnType<typeof loadConfig>;
 try {
   config = loadConfig(WORKSPACE);
 } catch {
   config = { memory: { backend: "builtin", citations: "auto", builtin: { temporalDecay: true, halfLifeDays: 30, mmr: true, mmrLambda: 0.7 } } };
 }
+// Seed the live-config cache with the same initial load.
+initLiveConfig(WORKSPACE);
 
 // Always initialize builtin DB (used as fallback even when QMD is primary)
 const extraPaths = config.memory.extraPaths || [];
@@ -140,13 +161,15 @@ function searchMemory(query: string, maxResults?: number): SearchResult[] {
       }
     }
 
-    // Builtin SQLite + FTS5
+    // Builtin SQLite + FTS5 — tuning knobs are read LIVE so config edits
+    // apply without /mcp.
+    const live = getLiveConfig();
     return memoryDB.search(query, {
       maxResults,
-      enableDecay: config.memory.builtin?.temporalDecay ?? true,
-      halfLifeDays: config.memory.builtin?.halfLifeDays ?? 30,
-      enableMMR: config.memory.builtin?.mmr ?? true,
-      mmrLambda: config.memory.builtin?.mmrLambda ?? 0.7,
+      enableDecay: live.memory.builtin?.temporalDecay ?? true,
+      halfLifeDays: live.memory.builtin?.halfLifeDays ?? 30,
+      enableMMR: live.memory.builtin?.mmr ?? true,
+      mmrLambda: live.memory.builtin?.mmrLambda ?? 0.7,
     });
   } catch {
     // Total search failure — return empty, never crash
@@ -444,6 +467,32 @@ function trackRecall(
 }
 
 // ---------------------------------------------------------------------------
+// MCP tool directory — kept in sync with the tools list below. Used by
+// list_commands so the agent can introspect what it has.
+// ---------------------------------------------------------------------------
+
+const MCP_TOOL_DIRECTORY: Array<{ name: string; description: string }> = [
+  { name: "memory_search", description: "Search memory with BM25, temporal decay, MMR." },
+  { name: "memory_get", description: "Read specific lines from a memory file." },
+  { name: "dream", description: "Run memory consolidation (status / run / dry-run)." },
+  { name: "agent_config", description: "View or update agent settings." },
+  { name: "agent_status", description: "Show identity, memory stats, dreaming state." },
+  { name: "memory_context", description: "Active-memory turn-start reflex — digest relevant context." },
+  { name: "agent_doctor", description: "Run diagnostics and optional auto-fixes." },
+  { name: "channels_detect", description: "Inspect messaging channel plugins and build the launch command." },
+  { name: "service_plan", description: "Plan install/uninstall/status/logs for the always-on service." },
+  { name: "list_commands", description: "Discover installed skills and MCP tools." },
+  { name: "voice_speak", description: "Generate a voice audio file from text (TTS)." },
+  { name: "voice_transcribe", description: "Transcribe an audio file to text (STT)." },
+  { name: "voice_status", description: "Report voice backend availability and WhatsApp-plugin audio state." },
+  { name: "skill_install", description: "Install a skill from GitHub or local path." },
+  { name: "skill_list", description: "List installed skills across scopes." },
+  { name: "skill_remove", description: "Remove an installed skill (requires confirm)." },
+  { name: "chat_inbox_read", description: "Read pending WebChat messages." },
+  { name: "webchat_reply", description: "Stream a reply to the open WebChat browser." },
+];
+
+// ---------------------------------------------------------------------------
 // MCP Server
 // ---------------------------------------------------------------------------
 
@@ -642,6 +691,95 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
         },
         required: ["action"],
+      },
+    },
+    {
+      name: "voice_speak",
+      description:
+        "Generate a voice audio file from text. Picks the best available TTS backend (sag → elevenlabs → openai-tts → say on macOS) unless `backend` overrides. Returns the file path; the agent typically then hands the path to a messaging plugin to deliver as a voice note. Requires `voice.enabled: true` in config.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          text: { type: "string", description: "Text to speak" },
+          voice: {
+            type: "string",
+            description: "Voice name/id (backend-specific). Overrides config.voice.defaultVoice.",
+          },
+          backend: {
+            type: "string",
+            enum: ["auto", "sag", "elevenlabs", "openai-tts", "say"],
+            description: "Force a specific backend (default: auto)",
+          },
+          outputPath: {
+            type: "string",
+            description: "Override output file path",
+          },
+        },
+        required: ["text"],
+      },
+    },
+    {
+      name: "voice_transcribe",
+      description:
+        "Transcribe an audio file to text. Picks the best available STT backend (whisper-cli → openai-whisper). PRECEDENCE: if the audio came through a channel plugin that already transcribes (e.g. WhatsApp with `audio on`), the agent receives transcribed text and should NOT call this tool for that audio. Use this only for audio from channels without built-in transcription (WebChat uploads, iMessage attachments, raw files).",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          audioPath: { type: "string", description: "Absolute path to the audio file" },
+          language: {
+            type: "string",
+            description: "Hint language code (e.g. 'es', 'en') for accuracy",
+          },
+          backend: {
+            type: "string",
+            enum: ["auto", "whisper-cli", "openai-whisper"],
+            description: "Force a specific backend (default: auto)",
+          },
+        },
+        required: ["audioPath"],
+      },
+    },
+    {
+      name: "voice_status",
+      description:
+        "Report which voice backends are available, which would be chosen, and whether the WhatsApp plugin is already handling audio locally (so the agent doesn't double-process).",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          format: {
+            type: "string",
+            enum: ["card", "json"],
+            description: "'card' (default) or 'json'",
+          },
+        },
+      },
+    },
+    {
+      name: "list_commands",
+      description:
+        "Discover all user-invocable commands — skills in ./skills/, .claude/skills/, ~/.claude/skills/, and (by default) the agent's own MCP tools. Returns each command's name, description, triggers (parsed from the description), scope, and argument hint. Use this to answer \"what can I do?\" or to render a live /help. Preferred over hardcoded lists because it picks up skills installed after boot.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          scope: {
+            type: "string",
+            enum: ["plugin", "project", "user", "mcp", "all"],
+            description: "Filter to one scope (default: all)",
+          },
+          includeInternal: {
+            type: "boolean",
+            description: "Include skills marked user-invocable: false (default: false)",
+          },
+          includeTools: {
+            type: "boolean",
+            description: "Include MCP tools as scope='mcp' entries (default: true)",
+          },
+          format: {
+            type: "string",
+            enum: ["table", "compact", "json"],
+            description: "'table' grouped by scope (default), 'compact' one line each, 'json' structured",
+          },
+        },
       },
     },
     {
@@ -1005,10 +1143,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             "",
             identity,
             "",
-            `Memory backend: ${qmdManager ? "QMD (" + (config.memory.qmd?.searchMode ?? "vsearch") + ")" : "builtin (SQLite + FTS5)"}`,
+            `Memory backend: ${qmdManager ? "QMD (" + (getLiveConfig().memory.qmd?.searchMode ?? "vsearch") + ")" : "builtin (SQLite + FTS5)"}`,
             `Memory index: ${stats.files} files, ${stats.chunks} chunks, ${(stats.totalSize / 1024).toFixed(1)} KB total`,
             `Dream tracking: ${recallCount} unique memories recalled`,
-            `Features: FTS5 + BM25${config.memory.builtin?.temporalDecay !== false ? " + temporal decay" : ""}${config.memory.builtin?.mmr !== false ? " + MMR" : ""}${qmdManager ? " + QMD embeddings + reranking" : ""}`,
+            `Features: FTS5 + BM25${getLiveConfig().memory.builtin?.temporalDecay !== false ? " + temporal decay" : ""}${getLiveConfig().memory.builtin?.mmr !== false ? " + MMR" : ""}${qmdManager ? " + QMD embeddings + reranking" : ""}`,
           ].join("\n"),
         },
       ],
@@ -1019,7 +1157,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const message = String(params.message || "");
     const format = String(params.format || "digest");
 
-    const mcCfg = config.memoryContext ?? {};
+    const live = getLiveConfig();
+    const mcCfg = live.memoryContext ?? {};
     if (mcCfg.enabled === false) {
       return {
         content: [
@@ -1034,7 +1173,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const result = getMemoryContext(message, (q, n) => searchMemory(q, n), {
       maxResults: mcCfg.maxResults,
       includeRecency: mcCfg.includeRecency,
-      halfLifeDays: mcCfg.halfLifeDays ?? config.memory.builtin?.halfLifeDays,
+      halfLifeDays: mcCfg.halfLifeDays ?? live.memory.builtin?.halfLifeDays,
     });
 
     if (format === "json") {
@@ -1144,6 +1283,137 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return {
       content: [{ type: "text", text: JSON.stringify(plan, null, 2) }],
       isError: !!plan.error,
+    };
+  }
+
+  if (name === "voice_speak") {
+    const text = String(params.text || "").trim();
+    if (!text) {
+      return {
+        content: [{ type: "text", text: "Error: text is required" }],
+        isError: true,
+      };
+    }
+    const voiceCfg = getLiveConfig().voice;
+    if (voiceCfg?.enabled !== true) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "Voice is disabled. Enable via /agent:settings → set voice.enabled=true (and set up a backend via /agent:voice setup).",
+          },
+        ],
+        isError: true,
+      };
+    }
+    const result = await voiceSpeak(text, {
+      config: voiceCfg,
+      preferred: (params.backend as any) || undefined,
+      voice: params.voice ? String(params.voice) : undefined,
+      outputPath: params.outputPath ? String(params.outputPath) : undefined,
+    });
+    if (!result.ok) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `❌ voice_speak failed: ${result.error}${result.triedBackends ? ` (tried: ${result.triedBackends.join(", ")})` : ""}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+    return {
+      content: [
+        {
+          type: "text",
+          text: `✅ ${result.backend} → ${result.path} (${result.bytes} bytes)\n\nUse MEDIA:${result.path} to send over a messaging channel that supports voice notes.`,
+        },
+      ],
+    };
+  }
+
+  if (name === "voice_transcribe") {
+    const audioPath = String(params.audioPath || "").trim();
+    if (!audioPath) {
+      return {
+        content: [{ type: "text", text: "Error: audioPath is required" }],
+        isError: true,
+      };
+    }
+    const voiceCfg = getLiveConfig().voice;
+    if (voiceCfg?.enabled !== true) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "Voice is disabled. Enable via /agent:settings → voice.enabled=true.",
+          },
+        ],
+        isError: true,
+      };
+    }
+    const result = await voiceTranscribe(audioPath, {
+      config: voiceCfg,
+      preferred: (params.backend as any) || undefined,
+      language: params.language ? String(params.language) : undefined,
+    });
+    if (!result.ok) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `❌ voice_transcribe failed: ${result.error}${result.triedBackends ? ` (tried: ${result.triedBackends.join(", ")})` : ""}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+    return {
+      content: [
+        {
+          type: "text",
+          text: `✅ ${result.backend}\n\n${result.text}`,
+        },
+      ],
+    };
+  }
+
+  if (name === "voice_status") {
+    const format = String(params.format || "card");
+    const status = getVoiceStatus(getLiveConfig().voice);
+    if (format === "json") {
+      return { content: [{ type: "text", text: JSON.stringify(status, null, 2) }] };
+    }
+    return { content: [{ type: "text", text: formatVoiceStatus(status) }] };
+  }
+
+  if (name === "list_commands") {
+    const scope = (params.scope as any) || "all";
+    const includeInternal = Boolean(params.includeInternal);
+    const includeTools = params.includeTools !== false;
+    const format = String(params.format || "table");
+
+    const commands = discoverCommands({
+      workspace: WORKSPACE,
+      mcpTools: MCP_TOOL_DIRECTORY,
+      scope,
+      includeInternal,
+      includeTools,
+    });
+
+    if (format === "json") {
+      return {
+        content: [{ type: "text", text: JSON.stringify(commands, null, 2) }],
+      };
+    }
+    if (format === "compact") {
+      return {
+        content: [{ type: "text", text: formatCommandsCompact(commands) }],
+      };
+    }
+    return {
+      content: [{ type: "text", text: formatCommandsTable(commands) }],
     };
   }
 
@@ -1290,6 +1560,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
+
+// Watch agent-config.json — non-critical changes apply live; critical changes
+// surface via a logging notification telling the user to run /mcp.
+startConfigWatcher(WORKSPACE, async (changes: CriticalChange[]) => {
+  const keys = changes.map((c) => c.key).join(", ");
+  try {
+    await server.notification({
+      method: "notifications/message",
+      params: {
+        level: "warning",
+        logger: "clawcode.config",
+        data: {
+          source: "live-config",
+          message: `Config change to ${keys} requires /mcp to apply. Other changes (if any) applied live.`,
+          changes,
+        },
+      },
+    });
+  } catch {}
+});
 
 // Start HTTP bridge if enabled (non-blocking — failure doesn't crash the MCP server)
 if (httpBridge) {

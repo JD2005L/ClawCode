@@ -6,13 +6,15 @@ Master index of every capability. The agent reads this first when it needs to re
 
 | Feature | Doc | Commands | MCP tools |
 |---|---|---|---|
-| Memory system | _(retro-doc pending)_ | — | `memory_search`, `memory_get` |
+| Memory system | [memory.md](memory.md) | — | `memory_search`, `memory_get` |
 | Active memory (turn-start reflex) | [memory-context.md](memory-context.md) | — | `memory_context` |
-| Dreaming | _(retro-doc pending)_ | `dream` tool | `dream` |
+| Dreaming | [dreaming.md](dreaming.md) | `dream` tool | `dream` |
 | Agent status | _(retro-doc pending)_ | `/agent:status`, `/status` | `agent_status` |
 | Agent config | _(retro-doc pending)_ | `/agent:settings` | `agent_config` |
 | Doctor | [doctor.md](doctor.md) | `/agent:doctor [--fix]` | `agent_doctor` |
+| Config hot-reload | [config-reload.md](config-reload.md) | — (automatic) | — |
 | Skill manager | [skill-manager.md](skill-manager.md) | `/agent:skill install\|list\|remove` | `skill_install`, `skill_list`, `skill_remove` |
+| Command discovery | [command-discovery.md](command-discovery.md) | `/help` (uses it) | `list_commands` |
 | Channels | [channels.md](channels.md) | `/agent:channels [list\|status\|launch]` | `channels_detect` |
 
 ## Optional (user enables)
@@ -22,7 +24,8 @@ Master index of every capability. The agent reads this first when it needs to re
 | HTTP bridge | [http-bridge.md](http-bridge.md) | `http.enabled` | `false` | Local HTTP server for status, webhooks, skills |
 | WebChat | [webchat.md](webchat.md) | `http.enabled` | `false` | Browser chat UI served by the HTTP bridge |
 | Always-on service | [service.md](service.md) | — (installed via skill) | not installed | Run agent as launchd / systemd service 24/7 |
-| QMD backend | _(retro-doc pending)_ | `memory.backend: "qmd"` | builtin | External semantic search via qmd |
+| Voice (TTS + STT) | [voice.md](voice.md) | `voice.enabled` | `false` | Speak text, transcribe audio — backends: sag, elevenlabs, openai-tts, say, whisper |
+| QMD backend | [qmd.md](qmd.md) | `memory.backend: "qmd"` | builtin | External semantic search via qmd |
 
 ## Rules for agents
 

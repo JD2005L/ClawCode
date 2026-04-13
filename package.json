@@ -13,5 +13,8 @@
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0"
+  },
+  "optionalDependencies": {
+    "@huggingface/transformers": "^3.0.0"
   }
 }
