@@ -1,16 +1,50 @@
-# ClawCode
+<h1 align="center">🛸 ClawCode</h1>
 
-> **Release 1.0** — Persistent agents for Claude Code with memory, dreaming, and personality.
+<p align="center">
+  <strong>Persistent agents for Claude Code — memory, dreaming, and personality.</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/crisandrews/ClawCode/releases"><img src="https://img.shields.io/github/v/release/crisandrews/ClawCode?include_prereleases&style=for-the-badge&color=FF6B35" alt="Release"></a>
+  <a href="https://github.com/crisandrews/ClawCode/stargazers"><img src="https://img.shields.io/github/stars/crisandrews/ClawCode?style=for-the-badge&color=blue" alt="Stars"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="MIT License"></a>
+  <img src="https://img.shields.io/badge/node-%E2%89%A5%2018-blue?style=for-the-badge&logo=node.js&logoColor=white" alt="Node ≥ 18">
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux-blue?style=for-the-badge" alt="Platform">
+</p>
+
+<p align="center">
+  <a href="#quick-setup">Quick Setup</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#skills">Skills</a> ·
+  <a href="#going-further">Going further</a> ·
+  <a href="#troubleshooting">Troubleshooting</a> ·
+  <a href="https://github.com/crisandrews/ClawCode/issues">Issues</a>
+</p>
+
+---
 
 Claude Code is stateless by default. Every session starts from zero — no memory of who you are, what you talked about, or how the agent should behave.
 
 ClawCode turns Claude Code into a stateful autonomous agent. It gives Claude a persistent identity, searchable memory with bilingual recall, nightly dreaming that consolidates important memories, and a terse conversational style. The agent remembers your dog's name, warns you about allergies before suggesting food, and responds in 1–2 lines instead of paragraphs.
 
-## Prerequisites
+## [Highlights](#highlights)
+
+- **[Persistent identity](#quick-setup)** — name, personality, emoji. The agent wakes up as itself on every session.
+- **[Active memory](#memory)** — bilingual recall at the start of every turn. Spanish question finds English memory and vice versa.
+- **[Dreaming](#dreaming)** — nightly 3-phase memory consolidation with 6 weighted signals.
+- **[Voice](#voice)** — TTS via sag, ElevenLabs, OpenAI, macOS `say`. STT via Whisper.
+- **[WebChat](#webchat)** — browser-based chat UI with real-time SSE, conversation logging in JSONL + Markdown.
+- **[Messaging channels](#messaging-channels)** — WhatsApp, Telegram, Discord, iMessage, Slack via MCP plugins.
+- **[Community skills](#community-skills)** — install from GitHub with `owner/repo@branch#subdir`.
+- **[Always-on](#always-on-service)** — launchd / systemd service with one command.
+- **[Doctor](#diagnostics)** — diagnose and auto-repair agent health.
+- **[Terse by design](#features)** — "Guardado. 🍣" not "I will now proceed to save your message to the daily memory log..."
+
+## [Prerequisites](#prerequisites)
 
 - [Node.js](https://nodejs.org/) v18+
 
-## Quick Setup
+## [Quick Setup](#quick-setup)
 
 **1. Create a folder for your agent.**
 
@@ -57,49 +91,9 @@ This starts the bootstrap ritual — a casual conversation where the agent disco
 
 The agent now wakes up with its identity on every session.
 
-## Skills
+## [Features](#features)
 
-| Skill | Description |
-| --- | --- |
-| `/agent:create` | Create a new agent with bootstrap ritual |
-| `/agent:import [id]` | Import an existing agent (personality + memory + skills + crons) |
-| `/agent:doctor [--fix]` | Diagnose agent health. `--fix` applies safe auto-repairs |
-| `/agent:settings` | View/modify agent config (guided) |
-| `/agent:skill install\|list\|remove` | Install community skills from GitHub, list installed, remove by name |
-| `/agent:channels` | Show messaging channel status and launch command |
-| `/agent:service install\|status\|uninstall\|logs` | Run the agent as an always-on background service |
-| `/agent:voice status\|setup` | Set up and test TTS / STT backends |
-| `/agent:messaging` | Set up WhatsApp, Telegram, Discord, iMessage, or Slack |
-| `/agent:crons` | Import crons as local scheduled tasks |
-| `/agent:heartbeat` | Run memory consolidation and periodic checks |
-| `/agent:status` | Agent status dashboard |
-| `/agent:usage` | Resource usage (memory, files, dreams) |
-| `/agent:new` | Save session and prepare for `/clear` |
-| `/agent:compact` | Save context before compression |
-| `/whoami` | Sender info and agent identity |
-| `/help` | List all available commands |
-
-## MCP tools
-
-| Tool | Description |
-| --- | --- |
-| `memory_search` | Full-text search with BM25, temporal decay, and MMR diversity |
-| `memory_context` | Active-memory turn-start reflex — bilingual, date-aware, auto-recall |
-| `memory_get` | Read specific lines from a memory file |
-| `dream` | Dreaming: `status`, `run`, or `dry-run` |
-| `agent_config` | Get/set config programmatically |
-| `agent_status` | Identity, memory stats, dream tracking |
-| `agent_doctor` | Diagnose + auto-repair agent health |
-| `skill_install` / `skill_list` / `skill_remove` | Manage skills from GitHub or local paths |
-| `channels_detect` | Report messaging channel status and build launch command |
-| `list_commands` | Dynamic `/help` — scans installed skills across all scopes |
-| `voice_speak` / `voice_transcribe` / `voice_status` | TTS and STT across multiple backends |
-| `service_plan` | Generate launchd/systemd service files |
-| `chat_inbox_read` / `webchat_reply` | WebChat messages (HTTP bridge) |
-
-## Features
-
-### Memory
+### [Memory](#memory)
 
 The agent writes to `memory/YYYY-MM-DD.md` during sessions and searches it automatically at the start of every turn — no need to say "search memory." Bilingual (Spanish ↔ English), date-aware ("what did we discuss yesterday?"), and safety-critical (warns about allergies before suggesting food).
 
@@ -107,25 +101,30 @@ Two backends: **builtin** (SQLite + FTS5, works out of the box) and **QMD** (loc
 
 Full details: [`docs/memory.md`](docs/memory.md) · [`docs/memory-context.md`](docs/memory-context.md) · [`docs/qmd.md`](docs/qmd.md)
 
-### Dreaming
+### [Dreaming](#dreaming)
 
 Nightly cron (3 AM) runs 3-phase memory consolidation — Light, REM, Deep — using 6 weighted signals to promote important memories to `memory/MEMORY.md`. Run manually with `dream(action='run')`.
 
 Full details: [`docs/dreaming.md`](docs/dreaming.md)
 
-### Voice
+### [Voice](#voice)
 
-TTS via sag, ElevenLabs, OpenAI, or macOS `say`. STT via local Whisper or OpenAI Whisper API. The agent auto-selects the best available backend.
+TTS via sag, ElevenLabs, OpenAI, or macOS `say`. STT via local Whisper or OpenAI Whisper API. The agent auto-selects the best available backend. Enable with `agent_config(action='set', key='voice.enabled', value='true')`.
 
 Full details: [`docs/voice.md`](docs/voice.md)
 
-### WebChat
+### [WebChat](#webchat)
 
 Browser-based chat UI with real-time SSE delivery. Enable the HTTP bridge, open `http://localhost:18790`. Dark/light mode, conversation logging in JSONL + Markdown (same format as WhatsApp plugin).
 
+```
+agent_config(action='set', key='http.enabled', value='true')
+/mcp
+```
+
 Full details: [`docs/webchat.md`](docs/webchat.md) · [`docs/http-bridge.md`](docs/http-bridge.md)
 
-### Messaging channels
+### [Messaging channels](#messaging-channels)
 
 Reach your agent from WhatsApp, Telegram, Discord, iMessage, or Slack. Each messaging plugin is an independent MCP server — no conflicts with ClawCode.
 
@@ -135,7 +134,37 @@ Reach your agent from WhatsApp, Telegram, Discord, iMessage, or Slack. Each mess
 
 Full details: [`docs/channels.md`](docs/channels.md)
 
-### Community skills
+### [Diagnostics](#diagnostics)
+
+`/agent:doctor` inspects config, identity, memory, SQLite, QMD, crons, HTTP bridge, messaging, and dreaming. Returns a ✅/⚠️/❌ card. Use `--fix` to auto-repair safe issues.
+
+Full details: [`docs/doctor.md`](docs/doctor.md)
+
+## [Skills](#skills)
+
+| Skill | Description |
+| --- | --- |
+| `/agent:create` | Create a new agent with bootstrap ritual |
+| `/agent:import [id]` | Import an existing agent (personality + memory + skills + crons) |
+| `/agent:doctor [--fix]` | Diagnose agent health. `--fix` applies safe auto-repairs |
+| `/agent:settings` | View/modify agent config (guided) |
+| `/agent:skill install\|list\|remove` | Install community skills from GitHub |
+| `/agent:channels` | Messaging channel status and launch command |
+| `/agent:service install\|status\|uninstall\|logs` | Always-on background service |
+| `/agent:voice status\|setup` | TTS / STT backends |
+| `/agent:messaging` | Set up WhatsApp, Telegram, Discord, iMessage, Slack |
+| `/agent:crons` | Import crons as local scheduled tasks |
+| `/agent:heartbeat` | Memory consolidation and periodic checks |
+| `/agent:status` | Agent status dashboard |
+| `/agent:usage` | Resource usage |
+| `/agent:new` | Save session and prepare for `/clear` |
+| `/agent:compact` | Save context before compression |
+| `/whoami` | Sender info and agent identity |
+| `/help` | List all available commands (dynamic) |
+
+## [Going further](#going-further)
+
+### [Community skills](#community-skills)
 
 Install skills from GitHub:
 
@@ -148,7 +177,7 @@ Install skills from GitHub:
 
 Full details: [`docs/skill-manager.md`](docs/skill-manager.md)
 
-### Always-on service
+### [Always-on service](#always-on-service)
 
 Run the agent as a background service (launchd on macOS, systemd on Linux):
 
@@ -160,7 +189,7 @@ Run the agent as a background service (launchd on macOS, systemd on Linux):
 
 Full details: [`docs/service.md`](docs/service.md)
 
-### Configuration
+### [Configuration](#configuration)
 
 All settings in `agent-config.json`. Edit directly or use `agent_config`:
 
@@ -169,23 +198,22 @@ agent_config(action='get')
 agent_config(action='set', key='memory.backend', value='qmd')
 ```
 
-Non-critical settings (halfLifeDays, mmrLambda) apply live. Critical settings (memory.backend, http.enabled) need `/mcp`.
+Non-critical settings apply live. Critical settings need `/mcp` — the agent tells you which.
 
 Full details: [`docs/config-reload.md`](docs/config-reload.md)
 
-## Personality files
+### [Multiple agents](#multiple-agents)
 
-| File | Purpose |
-| --- | --- |
-| `SOUL.md` | Core truths and boundaries |
-| `IDENTITY.md` | Name, emoji, vibe, birth date |
-| `USER.md` | Your info, timezone, language |
-| `AGENTS.md` | Operational protocols and behavioral rules |
-| `TOOLS.md` | Platform-specific formatting |
-| `HEARTBEAT.md` | Periodic check instructions |
-| `BOOTSTRAP.md` | First-run ritual (deleted after onboarding) |
+Each agent is its own folder with its own personality, memory, and config:
 
-## Session & data
+```
+~/agent-work/      ← Agent #1
+~/agent-personal/  ← Agent #2
+```
+
+Install the plugin in each folder with local scope. Switch: `cd ~/other-agent && claude`.
+
+## [Session & data](#session--data)
 
 ```
 ~/my-agent/
@@ -199,14 +227,14 @@ Full details: [`docs/config-reload.md`](docs/config-reload.md)
 │   └── .dreams/                      # Dream tracking data
 ├── .webchat/logs/conversations/      # WebChat logs (JSONL + MD)
 ├── skills/                           # Installed + imported skills
-└── IMPORT_BACKLOG.md                 # Items that couldn't be imported (if any)
+└── IMPORT_BACKLOG.md                 # Skipped import items (if any)
 ```
 
 **Conversation logs** are stored in two formats per channel:
 - **JSONL** — one JSON object per line, ideal for programmatic access and memory indexing
 - **Markdown** — human-readable chat transcript
 
-## Troubleshooting
+## [Troubleshooting](#troubleshooting)
 
 Run `/agent:doctor` first — it checks everything in one shot. Add `--fix` to auto-repair safe issues.
 
@@ -214,22 +242,18 @@ Run `/agent:doctor` first — it checks everything in one shot. Add `--fix` to a
 - **Memory search returns nothing** — Index builds on first search. For QMD: `agent_config(action='set', key='memory.backend', value='qmd')`.
 - **Agent doesn't remember things** — The active memory reflex uses bilingual synonyms but not everything. Try different keywords.
 - **Config change didn't take effect** — Non-critical settings apply live. Critical ones need `/mcp`. The agent tells you which.
-- **Messaging channels** — Run `/agent:channels status` for installed/authenticated/active status with the exact launch command.
+- **Messaging channels** — Run `/agent:channels status` for installed/authenticated/active status.
 
-## Important
+## [Important](#important)
 
-- **Multiple agents** — each agent is its own folder. Switch: `cd ~/other-agent && claude`.
 - **Crons only run while Claude Code is open** — for 24/7, use `/agent:service install`.
-- **WebChat logs + WhatsApp logs** are indexable via `memory.extraPaths` in config.
+- **WebChat + WhatsApp logs** are indexable via `memory.extraPaths` in config.
+- **Each agent folder is fully self-contained** — portable, backupable, deletable.
 
-## Further reading
+## [Further reading](#further-reading)
 
-Per-feature documentation in [`docs/`](docs/INDEX.md). Each feature has config reference, behavior details, and troubleshooting.
+Per-feature documentation in [`docs/`](docs/INDEX.md).
 
-## License
-
-MIT
-
-## Disclaimer
+## [Disclaimer](#disclaimer)
 
 ClawCode is an independent, open-source project. Claude is a trademark of Anthropic, PBC. ClawCode is not affiliated with or endorsed by Anthropic.
