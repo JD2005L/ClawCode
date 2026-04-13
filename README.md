@@ -208,6 +208,35 @@ Non-critical settings apply live. Critical settings need `/mcp` — the agent te
 
 Full details: [`docs/config-reload.md`](docs/config-reload.md)
 
+## [Updating, uninstalling, and cache](#updating-uninstalling-and-cache)
+
+**Update to the latest version:**
+
+```
+/plugin update agent@clawcode
+/reload-plugins
+```
+
+Your personality, memory, skills, and config are preserved — only the plugin code updates. No data loss.
+
+**Uninstall:**
+
+```
+/plugin uninstall agent@clawcode
+```
+
+Your agent files (SOUL.md, IDENTITY.md, memory/, skills/) stay in the folder — they're yours. Only the plugin code is removed.
+
+**Clear cache (if reinstall fails or behaves unexpectedly):**
+
+Close Claude, then in terminal:
+
+```sh
+rm -rf ~/.claude/plugins/cache/clawcode
+```
+
+Reopen Claude and install again.
+
 ### [Multiple agents](#multiple-agents)
 
 Each agent is its own folder with its own personality, memory, and config:
