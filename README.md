@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Persistent agents for Claude Code — memory, dreaming, and personality.</strong>
+  <strong>Turn Claude Code into a persistent agent — memory, personality, voice, messaging, and more.</strong>
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
 
 Claude Code is stateless by default. Every session starts from zero — no memory of who you are, what you talked about, or how the agent should behave.
 
-ClawCode turns Claude Code into a stateful autonomous agent. It gives Claude a persistent identity, searchable memory with bilingual recall, nightly dreaming that consolidates important memories, and a terse conversational style. The agent remembers your dog's name, warns you about allergies before suggesting food, and responds in 1–2 lines instead of paragraphs.
+ClawCode turns Claude Code into a persistent agent. It gives Claude a persistent identity, searchable memory with bilingual recall, nightly dreaming that consolidates important memories, and a terse conversational style. The agent remembers your dog's name, warns you about allergies before suggesting food, and responds in 1–2 lines instead of paragraphs.
 
 ## [Highlights](#highlights)
 
