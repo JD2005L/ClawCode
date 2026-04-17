@@ -39,9 +39,9 @@ The agent remembers your dog's name, warns about allergies before suggesting foo
 
 Claude Code is stateless by default. Open a new session and the agent starts from zero: no memory of what you were working on yesterday, no name, no feel for who it is. Good agents should not do that. That gap is what ClawCode fills.
 
-A harness is a runtime that wraps Claude's API with its own session, memory, and tool layer. OpenClaw is one. In April 2026, Anthropic restricted Claude subscriptions from being used with third-party harnesses, moving them onto pay-as-you-go API billing. ClawCode is not a harness: it runs as a plugin inside Claude Code itself, so a ClawCode user is simply a Claude Code user with an extra layer on top.
+There are roughly two ways to build persistence on top of Claude. One is a *harness*: a separate runtime that wraps Claude's API with its own session, memory, and tool layer. OpenClaw is one example. Harnesses run on Claude's API directly; as of April 2026 they can no longer draw from a Claude subscription, so users need to pay for API usage separately.
 
-The plugin path means ClawCode inherits what Claude Code already does well (its harness, tool system, skills, hooks, MCP plumbing) and adds only what a persistent agent needs on top.
+ClawCode takes the other route. It extends Claude Code from inside as a plugin, so there's no separate runtime and no separate billing. A ClawCode user is just a Claude Code user with an extra layer on top. ClawCode inherits what Claude Code already does well (its harness, tool system, skills, hooks, MCP plumbing) and adds only what a persistent agent needs.
 
 Coming from OpenClaw? `/agent:import` brings your agent's personality, memory, skills, and crons across.
 
